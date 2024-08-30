@@ -1,0 +1,142 @@
+vs.shader
+
+
+
+layout(location = 0) in vec4 vertex_position;
+layout(location = 1) in vec4 vertex_color;
+layout(location = 2) in vec4 vertex_normal;
+
+uniform mat4 projection_mat_shader;
+uniform mat4 view_mat_shader;
+uniform mat4 model_mat_shader;
+
+out vec3 position_eye;
+out vec3 normal_eye;
+
+out vec4 fragment_color;
+
+void main(void)
+{
+	position_eye = vec3(view_mat_shader * model_mat_shader * vertex_position);
+	normal_eye = vec3(view_mat_shader * model_mat_shader * vertex_normal);
+
+	gl_Position = projection_mat_shader * vec4(position_eye, 1.0);	
+
+	fragment_color = vertex_color;
+}
+
+
+int main
+
+class MatrixStack {
+	int    index;
+	int    size;
+	mat4* matrices;
+
+public:
+	MatrixStack(int numMatrices = 32) :index(0), size(numMatrices)
+	{
+		matrices = new mat4[numMatrices];
+	}
+
+	~MatrixStack()
+	{
+		delete[]matrices;
+	}
+
+	// phép toán đẩy vào
+	mat4& push(const mat4& m) {
+		assert(index + 1 < size);
+		matrices[index++] = m;
+		return matrices[index];
+	}
+
+	// phép toán lấy ra
+	mat4& pop(void) {
+		assert(index - 1 >= 0);
+		index--;
+		return matrices[index];
+	}
+};
+
+MatrixStack  mvstack;
+
+GLuint
+VaoId,
+VboId,
+VertexShaderId,
+FragmentShaderId,
+ProgramId;
+
+mat4
+model_mat_cpp,
+view_mat_cpp,
+projection_mat_cpp;
+
+int
+model_mat_location,
+view_mat_location,
+projection_mat_location;
+
+
+void cube()
+{
+	mvstack.push(model_mat_cpp);
+
+	mat4 instance = identity_mat4();
+	//instance = scale(vec3(1, 1, 1));
+	mat4 model_cube = model_mat_cpp * instance;
+
+	glUniformMatrix4fv(model_mat_location, 1, GL_FALSE, model_cube.m);
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+
+	model_mat_cpp = mvstack.pop();
+}
+
+void DisplayFunc(void)
+{
+	model_mat_cpp = identity_mat4();
+	model_mat_location = glGetUniformLocation(ProgramId, "model_mat_shader");
+	glUniformMatrix4fv(model_mat_location, 1, GL_FALSE, model_mat_cpp.m);
+	if (translated)
+	{
+		model_mat_cpp = model_mat_cpp * translate(vec3(t[0], t[1], t[2]));
+		glUniformMatrix4fv(model_mat_location, 1, GL_FALSE, model_mat_cpp.m);
+	}
+	if (rotated)
+	{
+		model_mat_cpp = model_mat_cpp * rotate_x(r[0])
+			* rotate_y(r[1])
+			* rotate_z(r[2]);
+		glUniformMatrix4fv(model_mat_location, 1, GL_FALSE, model_mat_cpp.m);
+	}
+	if (scaled)
+	{
+		model_mat_cpp = model_mat_cpp * scale(vec3(s[0], s[1], s[2]));
+		glUniformMatrix4fv(model_mat_location, 1, GL_FALSE, model_mat_cpp.m);
+	}
+
+	// Các tham số của hàm lookat
+	vec3	eye(0.0f, 0.0f, 2.0f),
+		at(0.0f, 0.0f, 0.0f),
+		up(0.0f, 1.0f, 0.0f);
+
+	view_mat_cpp = lookat(eye, at, up);
+	view_mat_location = glGetUniformLocation(ProgramId, "view_mat_shader");
+	glUniformMatrix4fv(view_mat_location, 1, GL_FALSE, view_mat_cpp.m);
+
+	float
+		znear = 0.1f,
+		zfar = 100.0f,
+		fov = 90.0f,
+		aspect = (float)CurrentWidth / CurrentHeight;
+	projection_mat_cpp = perspective(fov, aspect, znear, zfar);
+	projection_mat_location = glGetUniformLocation(ProgramId, "projection_mat_shader");
+	glUniformMatrix4fv(projection_mat_location, 1, GL_FALSE, projection_mat_cpp.m);
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+
+	glClearColor(0.196, 0.498, 0.7411764, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
